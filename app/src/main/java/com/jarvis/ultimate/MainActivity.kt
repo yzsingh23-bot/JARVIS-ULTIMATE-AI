@@ -176,10 +176,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             try {
                 val messages = JSONArray()
                 messages.put(JSONObject().put("role", "system").put("content", "You are JARVIS, a helpful voice assistant. Always answer in Punjabi (Gurmukhi script), concise and natural. Address the user respectfully as Sir (ਸਰ). Do not tell the user to search Google unless they explicitly ask for a web search."))
-                synchronized(chatHistory) { chatHistory.takeLast(12).forEach { messages.put(it) }; messages.put(JSONObject().put("role", "user").put("content", question)) }
-                val payload = JSONObject().put("model", "sarvam-105b-conversations").put("messages", messages).put("max_tokens", 700).put("temperature", 0.4)
+                synchronized(chatHistory) { chatHistory.takeLast(6).forEach { messages.put(it) }; messages.put(JSONObject().put("role", "user").put("content", question)) }
+                val payload = JSONObject().put("model", "sarvam-105b-conversations").put("messages", messages).put("max_tokens", 350).put("temperature", 0.3)
                 val conn = (URL("https://api.sarvam.ai/v1/chat/completions").openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"; connectTimeout = 15000; readTimeout = 45000; doOutput = true
+                    requestMethod = "POST"; connectTimeout = 8000; readTimeout = 30000; doOutput = true
                     setRequestProperty("Content-Type", "application/json"); setRequestProperty("api-subscription-key", key)
                 }
                 conn.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
