@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         if (speechReady) {
             tts?.language = Locale.getDefault()
             // Lower pitch and a slightly slower pace create a deeper, more deliberate AI voice.
-            tts?.setPitch(0.72f)
+            tts?.setPitch(0.70f)
             tts?.setSpeechRate(0.88f)
         }
     }
