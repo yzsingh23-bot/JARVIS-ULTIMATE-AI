@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     override fun onInit(status: Int) {
         speechReady = status == TextToSpeech.SUCCESS
         if (speechReady) {
-            tts?.language = Locale.getDefault()
+            tts?.language = Locale("pa", "IN")
             // Lower pitch and a slightly slower pace create a deeper, more deliberate AI voice.
             tts?.setPitch(0.70f)
             tts?.setSpeechRate(0.88f)
@@ -87,12 +87,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     private fun startListening() {
         val speech = recognizer ?: run {
-            speak("Speech recognition is not available on this device.")
+            speak("ਇਸ ਫੋਨ ਤੇ ਬੋਲੀ ਪਛਾਣ ਦੀ ਸਹੂਲਤ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।")
             return
         }
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pa-IN")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pa-IN")
             putExtra(RecognizerIntent.EXTRA_PROMPT, "Listening, Sir")
         }
         speech.setRecognitionListener(object : RecognitionListener {
@@ -101,7 +102,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             override fun onRmsChanged(rmsdB: Float) {}
             override fun onBufferReceived(buffer: ByteArray?) {}
             override fun onEndOfSpeech() {}
-            override fun onError(error: Int) { speak("I could not hear that clearly, Sir. Please try again.") }
+            override fun onError(error: Int) { speak("ਮਾਫ ਕਰਨਾ ਸਰ, ਮੈਂ ਠੀਕ ਤਰ੍ਹਾਂ ਨਹੀਂ ਸੁਣ ਸਕਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਬੋਲੋ।") }
             override fun onResults(results: Bundle?) {
                 val words = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 words?.firstOrNull()?.let { handleCommand(it) }
@@ -122,7 +123,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             lower.contains("open youtube") -> openApp("com.google.android.youtube", "YouTube")
             lower.contains("open chrome") -> openApp("com.android.chrome", "Chrome")
             lower.contains("open gmail") -> openApp("com.google.android.gm", "Gmail")
-            lower.contains("open camera") -> launch(Intent("android.media.action.IMAGE_CAPTURE"), "Camera")
+            lower.contains("camera") || lower.contains("ਕੈਮਰਾ") -> openCamera()
             lower.contains("open settings") -> launch(Intent(android.provider.Settings.ACTION_SETTINGS), "Settings")
             lower.startsWith("search ") || lower.startsWith("google ") -> {
                 val query = command.substringAfter(" ").trim()
@@ -141,14 +142,23 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 val destination = command.substringAfter("to ", command)
                 launch(Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=" + Uri.encode(destination))), "Maps")
             }
-            lower == "hello" || lower.contains("hello jarvis") -> speak("Good day, Sir. All systems are ready.")
+            lower == "hello" || lower.contains("hello jarvis") || lower.contains("ਸਤ ਸ੍ਰੀ ਅਕਾਲ") -> speak("ਸਤ ਸ੍ਰੀ ਅਕਾਲ ਸਰ। ਮੈਂ ਤੁਹਾਡੀ ਮਦਦ ਲਈ ਤਿਆਰ ਹਾਂ।")
             else -> openInChrome("https://www.google.com/search?q=" + Uri.encode(command), "Web Search")
+        }
+    }
+
+    private fun openCamera() {
+        try {
+            startActivity(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
+        } catch (_: Exception) {
+            try { startActivity(Intent("android.media.action.IMAGE_CAPTURE")) }
+            catch (_: Exception) { speak("ਮਾਫ ਕਰਨਾ ਸਰ, ਕੈਮਰਾ ਨਹੀਂ ਖੁੱਲ੍ਹ ਸਕਿਆ।") }
         }
     }
 
     private fun openWebsite(rawTarget: String) {
         if (rawTarget.isBlank()) {
-            speak("Which website should I open, Sir?")
+            speak("ਸਰ, ਤੁਸੀਂ ਕਿਹੜੀ ਵੈੱਬਸਾਈਟ ਖੋਲ੍ਹਣੀ ਚਾਹੁੰਦੇ ਹੋ?")
             return
         }
         val target = rawTarget.trim()
@@ -173,14 +183,14 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             } catch (_: Exception) {
-                speak("I could not open $label, Sir.")
+                speak("ਮਾਫ ਕਰਨਾ ਸਰ, ਮੈਂ $label ਨਹੀਂ ਖੋਲ੍ਹ ਸਕਿਆ।")
             }
         }
     }
 
     private fun openApp(packageName: String, label: String) {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        if (launchIntent != null) startActivity(launchIntent) else speak("$label is not installed, Sir.")
+        if (launchIntent != null) startActivity(launchIntent) else speak("ਸਰ, $label ਇਸ ਫੋਨ ਵਿੱਚ ਇੰਸਟਾਲ ਨਹੀਂ ਹੈ।")
     }
 
     private fun launch(intent: Intent, label: String) {
