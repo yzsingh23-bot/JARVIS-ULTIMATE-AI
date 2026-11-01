@@ -124,16 +124,57 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             lower.contains("open gmail") -> openApp("com.google.android.gm", "Gmail")
             lower.contains("open camera") -> launch(Intent("android.media.action.IMAGE_CAPTURE"), "Camera")
             lower.contains("open settings") -> launch(Intent(android.provider.Settings.ACTION_SETTINGS), "Settings")
-            lower.startsWith("search ") -> {
-                val query = command.removePrefix("search ").trim()
-                launch(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=" + Uri.encode(query))), "Google Search")
+            lower.startsWith("search ") || lower.startsWith("google ") -> {
+                val query = command.substringAfter(" ").trim()
+                openInChrome("https://www.google.com/search?q=" + Uri.encode(query), "Google Search")
+            }
+            lower.startsWith("open ") || lower.startsWith("visit ") || lower.startsWith("go to ") || lower.startsWith("browse ") -> {
+                val target = when {
+                    lower.startsWith("open ") -> command.substringAfter(" ").trim()
+                    lower.startsWith("visit ") -> command.substringAfter(" ").trim()
+                    lower.startsWith("go to ") -> command.substringAfter("go to ").trim()
+                    else -> command.substringAfter("browse ").trim()
+                }
+                openWebsite(target)
             }
             lower.startsWith("navigate to ") || lower.startsWith("maps to ") -> {
                 val destination = command.substringAfter("to ", command)
                 launch(Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=" + Uri.encode(destination))), "Maps")
             }
             lower == "hello" || lower.contains("hello jarvis") -> speak("Good day, Sir. All systems are ready.")
-            else -> speak("I can help with time, date, opening apps, Google searches, and Maps navigation. Online AI chat is coming in a later update.")
+            else -> openInChrome("https://www.google.com/search?q=" + Uri.encode(command), "Web Search")
+        }
+    }
+
+    private fun openWebsite(rawTarget: String) {
+        if (rawTarget.isBlank()) {
+            speak("Which website should I open, Sir?")
+            return
+        }
+        val target = rawTarget.trim()
+        val url = if (target.startsWith("https://", true) || target.startsWith("http://", true)) {
+            target
+        } else if (target.contains(" ") || !target.contains(".")) {
+            "https://www.google.com/search?q=" + Uri.encode(target)
+        } else {
+            "https://" + target
+        }
+        openInChrome(url, "Website")
+    }
+
+    private fun openInChrome(url: String, label: String) {
+        val chromeIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            setPackage("com.android.chrome")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            startActivity(chromeIntent)
+        } catch (_: Exception) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (_: Exception) {
+                speak("I could not open $label, Sir.")
+            }
         }
     }
 
@@ -229,7 +270,7 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("VOICE COMMANDS", color = cyan, fontSize = 10.sp, letterSpacing = 2.sp)
                         Spacer(Modifier.height(10.dp))
-                        Text("“What time is it?”  •  “Open YouTube”\n“Search weather”  •  “Navigate to home”",
+                        Text("“What time is it?”  •  “Open YouTube”\n“Search weather”  •  “Open wikipedia.org”",
                             color = Color(0xFFB6C9D5), fontSize = 12.sp, textAlign = TextAlign.Center, lineHeight = 22.sp)
                         Spacer(Modifier.height(15.dp))
                         Text("MICROPHONE IS USED ONLY AFTER YOU TAP THE BUTTON", color = Color(0xFF718B9B), fontSize = 8.sp, textAlign = TextAlign.Center)
