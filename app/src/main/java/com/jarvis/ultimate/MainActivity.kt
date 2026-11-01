@@ -117,8 +117,8 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         val command = raw.trim()
         val lower = command.lowercase(Locale.getDefault())
         when {
-            lower.contains("time") -> speak("The time is " + SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date()))
-            lower.contains("date") || lower.contains("day") -> speak("Today is " + SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault()).format(Date()))
+            lower.contains("time") || lower.contains("ਸਮਾਂ") -> speak("ਹੁਣ ਸਮਾਂ ਹੈ " + SimpleDateFormat("h:mm a", Locale("pa", "IN")).format(Date()))
+            lower.contains("date") || lower.contains("day") || lower.contains("ਤਾਰੀਖ") -> speak("ਅੱਜ ਦੀ ਤਾਰੀਖ ਹੈ " + SimpleDateFormat("EEEE, d MMMM yyyy", Locale("pa", "IN")).format(Date()))
             lower.contains("open whatsapp") -> openApp("com.whatsapp", "WhatsApp")
             lower.contains("open youtube") -> openApp("com.google.android.youtube", "YouTube")
             lower.contains("open chrome") -> openApp("com.android.chrome", "Chrome")
@@ -194,7 +194,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun launch(intent: Intent, label: String) {
-        try { startActivity(intent) } catch (_: Exception) { speak("I could not open $label, Sir.") }
+        try { startActivity(intent) } catch (_: Exception) { speak("ਮਾਫ ਕਰਨਾ ਸਰ, ਮੈਂ $label ਨਹੀਂ ਖੋਲ੍ਹ ਸਕਿਆ।") }
     }
 
     private fun speak(message: String) {
