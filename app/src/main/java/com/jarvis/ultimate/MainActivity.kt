@@ -3,6 +3,13 @@ package com.jarvis.ultimate
 import android.Manifest
 import android.content.pm.PackageManager
 import android.content.Intent
+import android.app.AlertDialog
+import android.widget.EditText
+import android.text.InputType
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import android.net.Uri
 import android.os.Bundle
 import android.speech.RecognitionListener
@@ -60,6 +67,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var recognizer: SpeechRecognizer? = null
     private var speechReady = false
+    private var sarvamApiKey: String? = null
+    private val chatHistory = mutableListOf<JSONObject>()
+    private var pendingQuestion: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -143,10 +153,46 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 launch(Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=" + Uri.encode(destination))), "Maps")
             }
             lower == "hello" || lower.contains("hello jarvis") || lower.contains("ਸਤ ਸ੍ਰੀ ਅਕਾਲ") -> speak("ਸਤ ਸ੍ਰੀ ਅਕਾਲ ਸਰ। ਮੈਂ ਤੁਹਾਡੀ ਮਦਦ ਲਈ ਤਿਆਰ ਹਾਂ।")
-            else -> openInChrome("https://www.google.com/search?q=" + Uri.encode(command), "Web Search")
+            else -> askSarvam(command)
         }
     }
 
+    private fun askSarvam(question: String) {
+        val key = sarvamApiKey
+        if (key.isNullOrBlank()) {
+            pendingQuestion = question
+            val input = EditText(this).apply { hint = "Sarvam API key (starts with sk_)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
+            AlertDialog.Builder(this).setTitle("Connect JARVIS AI")
+                .setMessage("Enter your Sarvam API key. It stays in memory for this app session and is not embedded in the APK.")
+                .setView(input).setPositiveButton("Connect") { _, _ ->
+                    sarvamApiKey = input.text.toString().trim()
+                    val saved = pendingQuestion; pendingQuestion = null
+                    if (!sarvamApiKey.isNullOrBlank() && saved != null) askSarvam(saved)
+                    else speak("ਕਿਰਪਾ ਕਰਕੇ ਵੈਧ ਸਰਵਮ API ਕੁੰਜੀ ਦਿਓ, ਸਰ।")
+                }.setNegativeButton("Cancel", null).show()
+            return
+        }
+        Thread {
+            try {
+                val messages = JSONArray()
+                messages.put(JSONObject().put("role", "system").put("content", "You are JARVIS, a helpful voice assistant. Always answer in Punjabi (Gurmukhi script), concise and natural. Address the user respectfully as Sir (ਸਰ). Do not tell the user to search Google unless they explicitly ask for a web search."))
+                synchronized(chatHistory) { chatHistory.takeLast(12).forEach { messages.put(it) }; messages.put(JSONObject().put("role", "user").put("content", question)) }
+                val payload = JSONObject().put("model", "sarvam-105b-conversations").put("messages", messages).put("max_tokens", 700).put("temperature", 0.4)
+                val conn = (URL("https://api.sarvam.ai/v1/chat/completions").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"; connectTimeout = 15000; readTimeout = 45000; doOutput = true
+                    setRequestProperty("Content-Type", "application/json"); setRequestProperty("api-subscription-key", key)
+                }
+                conn.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
+                val code = conn.responseCode; val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+                val body = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }; conn.disconnect()
+                if (code !in 200..299) throw IllegalStateException("Sarvam API error $code")
+                val answer = JSONObject(body).getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content").trim()
+                if (answer.isBlank()) throw IllegalStateException("Empty AI response")
+                synchronized(chatHistory) { chatHistory.add(JSONObject().put("role", "user").put("content", question)); chatHistory.add(JSONObject().put("role", "assistant").put("content", answer)); while (chatHistory.size > 24) chatHistory.removeAt(0) }
+                runOnUiThread { speak(answer) }
+            } catch (_: Exception) { runOnUiThread { speak("ਮਾਫ ਕਰਨਾ ਸਰ, ਆਨਲਾਈਨ AI ਨਾਲ ਸੰਪਰਕ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਇੰਟਰਨੈੱਟ ਅਤੇ ਸਰਵਮ API ਕੁੰਜੀ ਚੈੱਕ ਕਰੋ।") } }
+        }.start()
+    }
     private fun openCamera() {
         try {
             startActivity(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
