@@ -80,8 +80,33 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         setContent {
             JarvisScreen(
                 onListen = { startListening() },
-                onCommand = { command -> handleCommand(command) }
+                onCommand = { command -> handleCommand(command) },
+                onAlwaysOn = { startAlwaysOnService() }
             )
+        }
+        handleWakeIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleWakeIntent(intent)
+    }
+
+    private fun handleWakeIntent(intent: Intent?) {
+        if (intent?.action == WakeWordService.ACTION_WAKE_COMMAND) {
+            val command = intent.getStringExtra(WakeWordService.EXTRA_COMMAND)
+            if (!command.isNullOrBlank()) handleCommand(command)
+            intent.action = null
+        }
+    }
+
+    private fun startAlwaysOnService() {
+        try {
+            ContextCompat.startForegroundService(this, Intent(this, WakeWordService::class.java))
+            speak("ਜੀ ਸਰ, ਹਮੇਸ਼ਾ ਸੁਣਨ ਵਾਲਾ ਮੋਡ ਚਾਲੂ ਹੋ ਰਿਹਾ ਹੈ।")
+        } catch (_: Exception) {
+            speak("ਸਰ, ਹਮੇਸ਼ਾ ਸੁਣਨ ਵਾਲਾ ਮੋਡ ਚਾਲੂ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਐਪ ਖੋਲ੍ਹ ਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।")
         }
     }
 
@@ -274,14 +299,21 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 }
 
 @Composable
-private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit) {
+private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit, onAlwaysOn: () -> Unit) {
     val navy = Color(0xFF061321)
     val cyan = Color(0xFF39DDF5)
     var status by remember { mutableStateOf("SYSTEM ONLINE") }
     val context = LocalContext.current
+    var startAlwaysOnAfterPermission by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted -> status = if (granted) "MICROPHONE READY" else "MICROPHONE PERMISSION NEEDED" }
+    ) { granted ->
+        status = if (granted) "MICROPHONE READY" else "MICROPHONE PERMISSION NEEDED"
+        if (granted && startAlwaysOnAfterPermission) {
+            startAlwaysOnAfterPermission = false
+            onAlwaysOn()
+        }
+    }
 
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = navy) {
@@ -339,6 +371,22 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit) {
                         }
                         Spacer(Modifier.height(9.dp))
                         Text("TAP TO SPEAK", color = Color.LightGray, fontSize = 10.sp, letterSpacing = 2.sp)
+                        Spacer(Modifier.height(14.dp))
+                        Button(
+                            onClick = {
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                    onAlwaysOn()
+                                    status = "ALWAYS-ON LISTENING"
+                                } else {
+                                    startAlwaysOnAfterPermission = true
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF123B50)),
+                            shape = RoundedCornerShape(22.dp)
+                        ) {
+                            Text("ENABLE ALWAYS-ON  •  HEY JARVIS", color = Color.White, fontSize = 10.sp, letterSpacing = 1.sp)
+                        }
                     }
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -347,7 +395,7 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit) {
                         Text("“What time is it?”  •  “Open YouTube”\n“Search weather”  •  “Open wikipedia.org”",
                             color = Color(0xFFB6C9D5), fontSize = 12.sp, textAlign = TextAlign.Center, lineHeight = 22.sp)
                         Spacer(Modifier.height(15.dp))
-                        Text("MICROPHONE IS USED ONLY AFTER YOU TAP THE BUTTON", color = Color(0xFF718B9B), fontSize = 8.sp, textAlign = TextAlign.Center)
+                        Text("ALWAYS-ON USES A FOREGROUND MIC SERVICE. STOP IT FROM THE NOTIFICATION.", color = Color(0xFF718B9B), fontSize = 8.sp, textAlign = TextAlign.Center)
                     }
                 }
             }
