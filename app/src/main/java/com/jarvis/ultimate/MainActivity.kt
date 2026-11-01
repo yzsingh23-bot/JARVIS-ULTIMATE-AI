@@ -190,9 +190,27 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 if (answer.isBlank()) throw IllegalStateException("Empty AI response")
                 synchronized(chatHistory) { chatHistory.add(JSONObject().put("role", "user").put("content", question)); chatHistory.add(JSONObject().put("role", "assistant").put("content", answer)); while (chatHistory.size > 24) chatHistory.removeAt(0) }
                 runOnUiThread { speak(answer) }
-            } catch (_: Exception) { runOnUiThread { speak("ਮਾਫ ਕਰਨਾ ਸਰ, ਆਨਲਾਈਨ AI ਨਾਲ ਸੰਪਰਕ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਇੰਟਰਨੈੱਟ ਅਤੇ ਸਰਵਮ API ਕੁੰਜੀ ਚੈੱਕ ਕਰੋ।") } }
+            } catch (_: Exception) { runOnUiThread { speak(offlineFallback(question)) } }
         }.start()
     }
+
+    // Local fallback keeps basic assistance available when internet or Sarvam is unavailable.
+    private fun offlineFallback(question: String): String {
+        val q = question.lowercase(Locale.ROOT)
+        return when {
+            q.contains("who are you") || q.contains("ਤੇਰਾ ਨਾਮ") || q.contains("ਤੁਸੀਂ ਕੌਣ") ->
+                "ਮੈਂ ਜਾਰਵਿਸ ਹਾਂ, ਤੁਹਾਡਾ ਨਿੱਜੀ ਸਹਾਇਕ।"
+            q.contains("what can you do") || q.contains("ਕੀ ਕਰ ਸਕਦੇ") ->
+                "ਸਰ, ਮੈਂ ਸਮਾਂ ਅਤੇ ਤਾਰੀਖ ਦੱਸ ਸਕਦਾ ਹਾਂ, ਕੈਮਰਾ, ਸੈਟਿੰਗਾਂ ਅਤੇ ਕੁਝ ਐਪਾਂ ਖੋਲ੍ਹ ਸਕਦਾ ਹਾਂ। ਆਨਲਾਈਨ ਸਵਾਲਾਂ ਲਈ ਇੰਟਰਨੈੱਟ ਅਤੇ ਸਰਵਮ ਕੁੰਜੀ ਚਾਹੀਦੀ ਹੈ।"
+            q.contains("thank") || q.contains("ਧੰਨਵਾਦ") ->
+                "ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ ਸਰ।"
+            q.contains("hello") || q.contains("ਸਤ ਸ੍ਰੀ ਅਕਾਲ") ->
+                "ਸਤ ਸ੍ਰੀ ਅਕਾਲ ਸਰ। ਮੈਂ ਆਫਲਾਈਨ ਮੋਡ ਵਿੱਚ ਵੀ ਤਿਆਰ ਹਾਂ।"
+            else ->
+                "ਸਰ, ਇਸ ਸਵਾਲ ਦਾ ਪੂਰਾ ਜਵਾਬ ਦੇਣ ਲਈ ਇੰਟਰਨੈੱਟ ਅਤੇ ਸਰਵਮ AI ਦੀ ਲੋੜ ਹੈ। ਪਰ ਸਮਾਂ, ਤਾਰੀਖ ਅਤੇ ਫੋਨ ਦੇ ਕਮਾਂਡ ਆਫਲਾਈਨ ਵੀ ਕੰਮ ਕਰਦੇ ਹਨ।"
+        }
+    }
+
     private fun openCamera() {
         try {
             startActivity(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
