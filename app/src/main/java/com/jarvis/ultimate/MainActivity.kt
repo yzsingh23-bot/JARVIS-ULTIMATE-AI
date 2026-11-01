@@ -1,6 +1,7 @@
 package com.jarvis.ultimate
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -47,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -157,7 +159,7 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit) {
     val navy = Color(0xFF061321)
     val cyan = Color(0xFF39DDF5)
     var status by remember { mutableStateOf("SYSTEM ONLINE") }
-    var typedCommand by remember { mutableStateOf("") }
+    val context = LocalContext.current
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> status = if (granted) "MICROPHONE READY" else "MICROPHONE PERMISSION NEEDED" }
@@ -203,8 +205,12 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit) {
                         Spacer(Modifier.height(20.dp))
                         Button(
                             onClick = {
-                                status = "LISTENING..."
-                                onListen()
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                    status = "LISTENING..."
+                                    onListen()
+                                } else {
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
                             },
                             shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0C536B)),
