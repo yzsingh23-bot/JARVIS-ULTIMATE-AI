@@ -77,7 +77,12 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     override fun onInit(status: Int) {
         speechReady = status == TextToSpeech.SUCCESS
-        if (speechReady) tts?.language = Locale.getDefault()
+        if (speechReady) {
+            tts?.language = Locale.getDefault()
+            // Lower pitch and a slightly slower pace create a deeper, more deliberate AI voice.
+            tts?.setPitch(0.72f)
+            tts?.setSpeechRate(0.88f)
+        }
     }
 
     private fun startListening() {
