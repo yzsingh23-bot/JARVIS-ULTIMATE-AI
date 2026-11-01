@@ -178,7 +178,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     lower.startsWith("go to ") -> command.substringAfter("go to ").trim()
                     else -> command.substringAfter("browse ").trim()
                 }
-                if (!openInstalledApp(target)) openWebsite(target)
+                if (lower.startsWith("open ")) {
+                    if (!openInstalledApp(target)) speak("ਸਰ, $target ਨਾਮ ਦੀ ਐਪ ਇਸ ਫੋਨ ਵਿੱਚ ਨਹੀਂ ਮਿਲੀ।")
+                } else openWebsite(target)
             }
             lower.startsWith("navigate to ") || lower.startsWith("maps to ") -> {
                 val destination = command.substringAfter("to ", command)
