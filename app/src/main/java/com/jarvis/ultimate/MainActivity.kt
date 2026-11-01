@@ -37,16 +37,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -70,6 +73,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private var sarvamApiKey: String? = null
     private val chatHistory = mutableListOf<JSONObject>()
     private var pendingQuestion: String? = null
+    private val chatLog = mutableStateListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,7 +85,8 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             JarvisScreen(
                 onListen = { startListening() },
                 onCommand = { command -> handleCommand(command) },
-                onAlwaysOn = { startAlwaysOnService() }
+                onAlwaysOn = { startAlwaysOnService() },
+                chatMessages = chatLog.toList()
             )
         }
         handleWakeIntent(intent)
@@ -150,8 +155,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     private fun handleCommand(raw: String) {
         val command = raw.trim()
+        if (command.isNotBlank()) chatLog.add("You: $command")
         val lower = command.lowercase(Locale.getDefault())
         when {
+            lower.contains("joke") || lower.contains("ਚੁਟਕਲਾ") || lower.contains("ਮਜ਼ਾਕ") -> tellJoke()
             lower.contains("time") || lower.contains("ਸਮਾਂ") -> speak("ਹੁਣ ਸਮਾਂ ਹੈ " + SimpleDateFormat("h:mm a", Locale("pa", "IN")).format(Date()))
             lower.contains("date") || lower.contains("day") || lower.contains("ਤਾਰੀਖ") -> speak("ਅੱਜ ਦੀ ਤਾਰੀਖ ਹੈ " + SimpleDateFormat("EEEE, d MMMM yyyy", Locale("pa", "IN")).format(Date()))
             lower.contains("open whatsapp") -> openApp("com.whatsapp", "WhatsApp")
@@ -171,7 +178,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     lower.startsWith("go to ") -> command.substringAfter("go to ").trim()
                     else -> command.substringAfter("browse ").trim()
                 }
-                openWebsite(target)
+                if (!openInstalledApp(target)) openWebsite(target)
             }
             lower.startsWith("navigate to ") || lower.startsWith("maps to ") -> {
                 val destination = command.substringAfter("to ", command)
@@ -277,6 +284,31 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun openInstalledApp(appName: String): Boolean {
+        val wanted = appName.trim().lowercase(Locale.ROOT)
+        val match = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            .asSequence()
+            .map { app -> app to packageManager.getApplicationLabel(app).toString() }
+            .firstOrNull { (_, label) -> label.equals(wanted, ignoreCase = true) || label.lowercase(Locale.ROOT).contains(wanted) }
+        if (match != null) {
+            val launchIntent = packageManager.getLaunchIntentForPackage(match.first.packageName)
+            if (launchIntent != null) {
+                try { startActivity(launchIntent); speak("ਜੀ ਸਰ, ${match.second} ਖੋਲ੍ਹ ਰਿਹਾ ਹਾਂ।"); return true }
+                catch (_: Exception) { }
+            }
+        }
+        return false
+    }
+
+    private fun tellJoke() {
+        val jokes = listOf(
+            "ਸਰ, ਕੰਪਿਊਟਰ ਡਾਕਟਰ ਕੋਲ ਕਿਉਂ ਗਿਆ? ਕਿਉਂਕਿ ਉਸਨੂੰ ਵਾਇਰਸ ਹੋ ਗਿਆ ਸੀ!",
+            "ਸਰ, Wi-Fi ਉਦਾਸ ਕਿਉਂ ਸੀ? ਕਿਉਂਕਿ ਉਸਦਾ ਕੋਈ ਕਨੈਕਸ਼ਨ ਨਹੀਂ ਸੀ!",
+            "ਸਰ, ਕਿਤਾਬ ਨੇ ਦੂਜੀ ਕਿਤਾਬ ਨੂੰ ਕੀ ਕਿਹਾ? ਤੂੰ ਬਹੁਤ ਕਵਰ ਕਰਦੀ ਏਂ!"
+        )
+        speak(jokes.random())
+    }
+
     private fun openApp(packageName: String, label: String) {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
         if (launchIntent != null) startActivity(launchIntent) else speak("ਸਰ, $label ਇਸ ਫੋਨ ਵਿੱਚ ਇੰਸਟਾਲ ਨਹੀਂ ਹੈ।")
@@ -287,6 +319,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun speak(message: String) {
+        if (message.isNotBlank() && (chatLog.isEmpty() || !chatLog.last().equals("JARVIS: $message", true))) {
+            chatLog.add("JARVIS: $message")
+            while (chatLog.size > 30) chatLog.removeAt(0)
+        }
         if (speechReady) tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "jarvis_reply")
     }
 
@@ -299,10 +335,11 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 }
 
 @Composable
-private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit, onAlwaysOn: () -> Unit) {
+private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit, onAlwaysOn: () -> Unit, chatMessages: List<String>) {
     val navy = Color(0xFF061321)
     val cyan = Color(0xFF39DDF5)
     var status by remember { mutableStateOf("SYSTEM ONLINE") }
+    var messageText by remember { mutableStateOf("") }
     val context = LocalContext.current
     var startAlwaysOnAfterPermission by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -370,7 +407,28 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit, onAl
                             Icon(Icons.Default.Mic, contentDescription = "Start voice command", tint = Color.White, modifier = Modifier.size(29.dp))
                         }
                         Spacer(Modifier.height(9.dp))
-                        Text("TAP TO SPEAK", color = Color.LightGray, fontSize = 10.sp, letterSpacing = 2.sp)
+                        Text("TALK TO JARVIS", color = Color.LightGray, fontSize = 10.sp, letterSpacing = 2.sp)
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = messageText,
+                            onValueChange = { messageText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            label = { Text("Type a message to JARVIS", color = cyan) },
+                            trailingIcon = {
+                                Icon(Icons.Default.Send, contentDescription = "Send message", tint = cyan,
+                                    modifier = Modifier.size(24.dp).padding(2.dp))
+                            }
+                        )
+                        Button(onClick = { val sent = messageText.trim(); if (sent.isNotEmpty()) { onCommand(sent); messageText = "" } },
+                            modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0C536B))) {
+                            Text("SEND MESSAGE", color = Color.White, letterSpacing = 1.sp)
+                        }
+                        Column(modifier = Modifier.fillMaxWidth().height(90.dp).background(Color(0x44051A28), RoundedCornerShape(12.dp)).padding(8.dp)) {
+                            chatMessages.takeLast(3).forEach { line ->
+                                Text(line, color = if (line.startsWith("JARVIS:")) cyan else Color.White, fontSize = 10.sp, maxLines = 2)
+                            }
+                        }
                         Spacer(Modifier.height(14.dp))
                         Button(
                             onClick = {
