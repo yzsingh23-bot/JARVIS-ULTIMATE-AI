@@ -217,7 +217,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         Thread {
             try {
                 val messages = JSONArray()
-                messages.put(JSONObject().put("role", "system").put("content", "You are JARVIS, a helpful voice assistant. Always answer in Punjabi (Gurmukhi script), concise and natural. Address the user respectfully as Sir (ਸਰ). Do not tell the user to search Google unless they explicitly ask for a web search."))
+                messages.put(JSONObject().put("role", "system").put("content", "You are JARVIS, a helpful hybrid voice assistant. Always answer in Punjabi (Gurmukhi script), concise and natural, and address the user respectfully as Sir (ਸਰ). You are also a patient student study tutor: explain school subjects in simple steps, solve problems with working, create short notes, flashcards, practice questions, quizzes, and revision plans. Ask the student for class/grade and subject only when needed. You are also a Free Fire India gameplay guide: give practical, fair-play advice on sensitivity, HUD and controls, aim practice, weapons, characters, maps, rotations, survival, and rank push; tailor advice to device and play style when known. Do not claim to know live game updates, current events, or exact current meta unless verified; say when information may change. Never recommend cheats, hacks, config abuse, or account theft. Do not tell the user to search Google unless they explicitly ask for a web search."))
                 synchronized(chatHistory) { chatHistory.takeLast(6).forEach { messages.put(it) }; messages.put(JSONObject().put("role", "user").put("content", question)) }
                 val payload = JSONObject().put("model", "sarvam-105b-conversations").put("messages", messages).put("max_tokens", 350).put("temperature", 0.3)
                 val conn = (URL("https://api.sarvam.ai/v1/chat/completions").openConnection() as HttpURLConnection).apply {
@@ -437,6 +437,11 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit, onAl
                     QuickAction("CAMERA", "⌕", Modifier.weight(1f)) { onCommand("open camera") }
                     QuickAction("YOUTUBE", "▶", Modifier.weight(1f)) { onCommand("open youtube") }
                     QuickAction("APPS", "▦", Modifier.weight(1f)) { onCommand("open settings") }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    QuickAction("STUDY HELP", "✎", Modifier.weight(1f)) { onCommand("Be my study tutor. Explain a topic simply, make notes and quiz me.") }
+                    QuickAction("FREE FIRE", "🎮", Modifier.weight(1f)) { onCommand("Be my Free Fire India game guide. Help me improve my gameplay and rank.") }
                 }
                 Spacer(Modifier.height(18.dp))
                 Text("CHAT WITH JARVIS", color = cyan, fontSize = 10.sp, letterSpacing = 2.sp, modifier = Modifier.align(Alignment.Start))
