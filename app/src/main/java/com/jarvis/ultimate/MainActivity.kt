@@ -181,6 +181,7 @@ class MainActivity : ComponentActivity() {
         }
         val lower = command.lowercase(Locale.getDefault())
         when {
+            lower.startsWith("send whatsapp") || lower.startsWith("send message") -> confirmWhatsAppSend(command)
             lower.startsWith("remind me") || lower.startsWith("set reminder") -> setReminder(command)
             lower.contains("joke") || lower.contains("ਚੁਟਕਲਾ") || lower.contains("ਮਜ਼ਾਕ") -> tellJoke()
             lower.contains("time") || lower.contains("ਸਮਾਂ") -> addReply("The time is " + SimpleDateFormat("h:mm a", Locale("en", "IN")).format(Date()))
@@ -213,6 +214,39 @@ class MainActivity : ComponentActivity() {
             lower == "hello" || lower.contains("hello jarvis") || lower.contains("ਸਤ ਸ੍ਰੀ ਅਕਾਲ") -> addReply("Good day, Sir. JARVIS is ready to assist.")
             else -> askSarvam(command)
         }
+    }
+
+    private fun confirmWhatsAppSend(command: String) {
+        val match = Regex("(?i)^send (?:whatsapp )?message to (.+?) (?:saying|message) (.+)$").find(command)
+            ?: Regex("(?i)^send whatsapp to (.+?) message (.+)$").find(command)
+        if (match == null) {
+            addReply("Use: send WhatsApp message to [contact name] saying [message]. I will ask you to confirm before opening WhatsApp.")
+            return
+        }
+        val contact = match.groupValues[1].trim()
+        val message = match.groupValues[2].trim()
+        AlertDialog.Builder(this)
+            .setTitle("Confirm WhatsApp draft")
+            .setMessage("""Prepare this message for $contact?
+
+$message
+
+JARVIS will open WhatsApp. You must choose the recipient and press Send yourself.""")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Continue") { _, _ ->
+                val share = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, message)
+                    setPackage("com.whatsapp")
+                }
+                try {
+                    startActivity(share)
+                    addReply("WhatsApp opened with your draft. Please verify the recipient and press Send yourself.")
+                } catch (_: Exception) {
+                    addReply("WhatsApp is not installed or could not be opened.")
+                }
+            }
+            .show()
     }
 
     private fun setReminder(command: String) {
