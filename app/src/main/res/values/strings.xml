@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">JARVIS AI</string>
+    <string name="jarvis_widget_description">Tap to open JARVIS and start microphone input</string>
+</resources>
