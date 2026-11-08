@@ -145,7 +145,7 @@ class MainActivity : ComponentActivity() {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Listening, Sir")
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         }
         speech.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {}
@@ -153,10 +153,21 @@ class MainActivity : ComponentActivity() {
             override fun onRmsChanged(rmsdB: Float) {}
             override fun onBufferReceived(buffer: ByteArray?) {}
             override fun onEndOfSpeech() {}
-            override fun onError(error: Int) { addReply("I couldn't hear that clearly, Sir. Please try again.") }
+            override fun onError(error: Int) {
+                val reason = when (error) {
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is missing. Allow it in Android Settings."
+                    SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Speech recognition needs a working recognition service or downloaded language pack."
+                    SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "I didn't detect speech. Tap the microphone and try again."
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "The microphone is busy. Wait a moment and try again."
+                    else -> "Speech recognition failed (code $error). Check microphone permission and your phone's speech service."
+                }
+                addReply(reason)
+            }
             override fun onResults(results: Bundle?) {
                 val words = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                words?.firstOrNull()?.let { handleCommand(it) }
+                val recognized = words?.firstOrNull()?.trim()
+                if (!recognized.isNullOrBlank()) handleCommand(recognized)
+                else addReply("I heard no words, Sir. Please tap the microphone and try again.")
             }
             override fun onPartialResults(partialResults: Bundle?) {}
             override fun onEvent(eventType: Int, params: Bundle?) {}
