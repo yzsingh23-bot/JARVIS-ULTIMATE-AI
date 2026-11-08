@@ -296,7 +296,11 @@ JARVIS will open WhatsApp. You must choose the recipient and press Send yourself
                     sarvamApiKey = input.text.toString().trim()
                     val saved = pendingQuestion; pendingQuestion = null
                     if (!sarvamApiKey.isNullOrBlank() && saved != null) askSarvam(saved)
+                    else if (saved != null) addReply(offlineFallback(saved))
                     else addReply("Please enter a valid Sarvam API key, Sir.")
+                }.setNeutralButton("Use Offline") { _, _ ->
+                    val saved = pendingQuestion; pendingQuestion = null
+                    if (saved != null) addReply(offlineFallback(saved))
                 }.setNegativeButton("Cancel", null).show()
             return
         }
@@ -332,10 +336,14 @@ JARVIS will open WhatsApp. You must choose the recipient and press Send yourself
         val q = question.lowercase(Locale.ROOT)
         return when {
             q.contains("who are you") -> "I am JARVIS, your personal AI assistant, Sir."
-            q.contains("what can you do") -> "I can handle basic phone commands offline, open supported apps, tell jokes, and help with study and Free Fire. Online AI answers need a working Sarvam connection."
+            q.contains("what can you do") -> "OFFLINE MODE: I can open supported apps, use the camera, show time and date, set Clock alarms, prepare WhatsApp drafts with confirmation, tell jokes, and give basic study and Free Fire tips. Connect Sarvam for full conversational AI."
             q.contains("thank") -> "You're welcome, Sir."
-            q.contains("hello") -> "Good day, Sir. I am ready."
-            else -> "I cannot reach Sarvam AI right now. Basic phone commands still work offline. Check your internet connection and API setup."
+            q.contains("hello") || q.contains("hi jarvis") -> "Good day, Sir. JARVIS is ready in offline mode."
+            q.contains("joke") -> "Why did the computer visit the doctor? It caught a virus, Sir!"
+            q.contains("study") || q.contains("homework") || q.contains("exam") -> "Offline study tip, Sir: choose one small topic, read it for 20 minutes, close your book and write five key points from memory, then test yourself with practice questions. Connect Sarvam for subject-specific explanations."
+            q.contains("free fire") || q.contains("freefire") -> "Offline Free Fire tip, Sir: use a comfortable HUD, keep sensitivity consistent, practise drag headshots in the training ground, use cover before healing, and avoid running in open areas. Connect Sarvam for tailored coaching."
+            q.contains("math") || q.contains("addition") -> "Offline maths tip, Sir: write the known values first, choose the relevant formula, solve one step at a time, and check your answer by substituting it back. Connect Sarvam for worked solutions."
+            else -> "I am in OFFLINE MODE, Sir. Phone commands and basic built-in help remain available, but I cannot generate a full AI answer without Sarvam. Check your internet/API key or choose a supported local command."
         }
     }
 
