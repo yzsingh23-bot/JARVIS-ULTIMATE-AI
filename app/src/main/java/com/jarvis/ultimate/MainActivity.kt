@@ -19,6 +19,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -373,7 +378,7 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit, onAl
                         modifier = Modifier.border(1.dp, cyan.copy(alpha = 0.6f), RoundedCornerShape(18.dp))
                             .background(Color(0x3324C9F0), RoundedCornerShape(18.dp)).padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
-                        Text("● ONLINE", color = Color(0xFF69F5B5), fontSize = 10.sp, letterSpacing = 1.sp)
+                        Text("● SYSTEM READY", color = Color(0xFF69F5B5), fontSize = 10.sp, letterSpacing = 1.sp)
                     }
                 }
                 Spacer(Modifier.height(26.dp))
@@ -482,37 +487,71 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit, onAl
 @Composable
 private fun ArcReactorButton(onClick: () -> Unit) {
     val cyan = Color(0xFF38DFFF)
+    val transition = rememberInfiniteTransition(label = "arc-reactor")
+    val rotation by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(9000, easing = LinearEasing)),
+        label = "reactor-rotation"
+    )
+    val pulse by transition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(tween(1700, easing = LinearEasing), repeatMode = androidx.compose.animation.core.RepeatMode.Reverse),
+        label = "reactor-pulse"
+    )
     Box(
-        modifier = Modifier.size(224.dp).clickable(onClick = onClick)
-            .background(Brush.radialGradient(listOf(Color(0xFF164D68), Color(0xFF071827), Color(0xFF020914))), CircleShape)
-            .border(2.dp, cyan.copy(alpha = 0.9f), CircleShape).padding(9.dp)
-            .border(2.dp, cyan.copy(alpha = 0.45f), CircleShape).padding(8.dp),
+        modifier = Modifier.size(248.dp).clickable(onClick = onClick)
+            .background(Brush.radialGradient(listOf(Color(0xFF1A6685), Color(0xFF0A263B), Color(0xFF020914))), CircleShape)
+            .border(2.dp, cyan.copy(alpha = 0.95f), CircleShape).padding(9.dp)
+            .border(2.dp, cyan.copy(alpha = 0.42f), CircleShape).padding(8.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val c = Offset(size.width / 2f, size.height / 2f)
-            val radius = size.minDimension * 0.43f
-            drawCircle(cyan.copy(alpha = 0.9f), radius = radius, center = c, style = Stroke(width = 3.dp.toPx()))
-            drawCircle(cyan.copy(alpha = 0.55f), radius = radius * 0.78f, center = c, style = Stroke(width = 2.dp.toPx()))
-            drawCircle(Color(0xFFB8F8FF).copy(alpha = 0.85f), radius = radius * 0.48f, center = c, style = Stroke(width = 2.dp.toPx()))
-            for (i in 0 until 12) {
-                val angle = Math.toRadians((i * 30.0) - 90.0)
+            val radius = size.minDimension * 0.43f * pulse
+            drawCircle(cyan.copy(alpha = 0.12f), radius = radius * 1.13f, center = c)
+            drawCircle(cyan.copy(alpha = 0.92f), radius = radius, center = c, style = Stroke(width = 3.dp.toPx()))
+            drawCircle(cyan.copy(alpha = 0.48f), radius = radius * 0.78f, center = c, style = Stroke(width = 2.dp.toPx()))
+            drawCircle(Color(0xFFB8F8FF).copy(alpha = 0.9f), radius = radius * 0.48f, center = c, style = Stroke(width = 2.dp.toPx()))
+            drawArc(cyan, rotation, 105f, false,
+                topLeft = Offset(c.x - radius * 0.9f, c.y - radius * 0.9f),
+                size = androidx.compose.ui.geometry.Size(radius * 1.8f, radius * 1.8f),
+                style = Stroke(width = 5.dp.toPx()))
+            drawArc(Color(0xFFB8F8FF), -rotation * 0.7f, 70f, false,
+                topLeft = Offset(c.x - radius * 0.69f, c.y - radius * 0.69f),
+                size = androidx.compose.ui.geometry.Size(radius * 1.38f, radius * 1.38f),
+                style = Stroke(width = 3.dp.toPx()))
+            for (i in 0 until 24) {
+                val angle = Math.toRadians((i * 15.0) + rotation)
                 val inner = radius * 0.84f
-                val outer = radius * 1.02f
+                val outer = radius * (if (i % 3 == 0) 1.08f else 1.01f)
                 drawLine(
-                    color = cyan.copy(alpha = if (i % 3 == 0) 1f else 0.65f),
+                    color = cyan.copy(alpha = if (i % 3 == 0) 1f else 0.55f),
                     start = Offset(c.x + cos(angle).toFloat() * inner, c.y + sin(angle).toFloat() * inner),
                     end = Offset(c.x + cos(angle).toFloat() * outer, c.y + sin(angle).toFloat() * outer),
-                    strokeWidth = if (i % 3 == 0) 5.dp.toPx() else 3.dp.toPx()
+                    strokeWidth = if (i % 3 == 0) 4.dp.toPx() else 2.dp.toPx()
                 )
             }
-            drawCircle(Color(0xFF6DEBFF).copy(alpha = 0.18f), radius = radius * 0.39f, center = c)
+            // Audio-reactor style radial waveform around the centre.
+            for (i in 0 until 48) {
+                val angle = Math.toRadians(i * 7.5)
+                val wave = if (i % 4 == 0) 1.12f else if (i % 2 == 0) 1.07f else 1.035f
+                drawLine(
+                    color = Color(0xFF72EFFF).copy(alpha = 0.7f),
+                    start = Offset(c.x + cos(angle).toFloat() * radius * 1.1f, c.y + sin(angle).toFloat() * radius * 1.1f),
+                    end = Offset(c.x + cos(angle).toFloat() * radius * wave, c.y + sin(angle).toFloat() * radius * wave),
+                    strokeWidth = 1.5.dp.toPx()
+                )
+            }
+            drawCircle(Color(0xFF6DEBFF).copy(alpha = 0.22f), radius = radius * 0.39f, center = c)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Mic, contentDescription = "Talk to JARVIS", tint = Color.White, modifier = Modifier.size(38.dp))
+            Icon(Icons.Default.Mic, contentDescription = "Talk to JARVIS", tint = Color.White, modifier = Modifier.size(40.dp))
             Spacer(Modifier.height(7.dp))
             Text("TAP TO", color = cyan, fontSize = 10.sp, letterSpacing = 2.sp)
-            Text("JARVIS", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Text("J.A.R.V.I.S.", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Text("VOICE LINK", color = cyan.copy(alpha = 0.9f), fontSize = 8.sp, letterSpacing = 2.sp)
         }
     }
 }
