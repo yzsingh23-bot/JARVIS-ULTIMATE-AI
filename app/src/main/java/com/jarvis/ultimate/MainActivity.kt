@@ -15,7 +15,6 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-import android.speech.tts.TextToSpeech
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -74,10 +73,8 @@ import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
 
-class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
-    private var tts: TextToSpeech? = null
+class MainActivity : ComponentActivity() {
     private var recognizer: SpeechRecognizer? = null
-    private var speechReady = false
     private var sarvamApiKey: String? = null
     private val chatHistory = mutableListOf<JSONObject>()
     private var pendingQuestion: String? = null
@@ -85,7 +82,6 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        tts = TextToSpeech(this, this)
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
             recognizer = SpeechRecognizer.createSpeechRecognizer(this)
         }
@@ -117,31 +113,21 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private fun startAlwaysOnService() {
         try {
             ContextCompat.startForegroundService(this, Intent(this, WakeWordService::class.java))
-            speak("ਜੀ ਸਰ, ਹਮੇਸ਼ਾ ਸੁਣਨ ਵਾਲਾ ਮੋਡ ਚਾਲੂ ਹੋ ਰਿਹਾ ਹੈ।")
+            addReply("Always-on listening started. Say Hey Jarvis.")
         } catch (_: Exception) {
-            speak("ਸਰ, ਹਮੇਸ਼ਾ ਸੁਣਨ ਵਾਲਾ ਮੋਡ ਚਾਲੂ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਐਪ ਖੋਲ੍ਹ ਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।")
-        }
-    }
-
-    override fun onInit(status: Int) {
-        speechReady = status == TextToSpeech.SUCCESS
-        if (speechReady) {
-            tts?.language = Locale("pa", "IN")
-            // Lower pitch and a slightly slower pace create a deeper, more deliberate AI voice.
-            tts?.setPitch(0.70f)
-            tts?.setSpeechRate(0.88f)
+            addReply("Could not start always-on listening. Please try again.")
         }
     }
 
     private fun startListening() {
         val speech = recognizer ?: run {
-            speak("ਇਸ ਫੋਨ ਤੇ ਬੋਲੀ ਪਛਾਣ ਦੀ ਸਹੂਲਤ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।")
+            addReply("Speech recognition is not available on this phone.")
             return
         }
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pa-IN")
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pa-IN")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "en-IN")
             putExtra(RecognizerIntent.EXTRA_PROMPT, "Listening, Sir")
         }
         speech.setRecognitionListener(object : RecognitionListener {
@@ -150,7 +136,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             override fun onRmsChanged(rmsdB: Float) {}
             override fun onBufferReceived(buffer: ByteArray?) {}
             override fun onEndOfSpeech() {}
-            override fun onError(error: Int) { speak("ਮਾਫ ਕਰਨਾ ਸਰ, ਮੈਂ ਠੀਕ ਤਰ੍ਹਾਂ ਨਹੀਂ ਸੁਣ ਸਕਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਬੋਲੋ।") }
+            override fun onError(error: Int) { addReply("I couldn't hear that clearly, Sir. Please try again.") }
             override fun onResults(results: Bundle?) {
                 val words = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 words?.firstOrNull()?.let { handleCommand(it) }
@@ -167,8 +153,8 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         val lower = command.lowercase(Locale.getDefault())
         when {
             lower.contains("joke") || lower.contains("ਚੁਟਕਲਾ") || lower.contains("ਮਜ਼ਾਕ") -> tellJoke()
-            lower.contains("time") || lower.contains("ਸਮਾਂ") -> speak("ਹੁਣ ਸਮਾਂ ਹੈ " + SimpleDateFormat("h:mm a", Locale("pa", "IN")).format(Date()))
-            lower.contains("date") || lower.contains("day") || lower.contains("ਤਾਰੀਖ") -> speak("ਅੱਜ ਦੀ ਤਾਰੀਖ ਹੈ " + SimpleDateFormat("EEEE, d MMMM yyyy", Locale("pa", "IN")).format(Date()))
+            lower.contains("time") || lower.contains("ਸਮਾਂ") -> addReply("The time is " + SimpleDateFormat("h:mm a", Locale("en", "IN")).format(Date()))
+            lower.contains("date") || lower.contains("day") || lower.contains("ਤਾਰੀਖ") -> addReply("Today is " + SimpleDateFormat("EEEE, d MMMM yyyy", Locale("en", "IN")).format(Date()))
             lower.contains("open whatsapp") -> openApp("com.whatsapp", "WhatsApp")
             lower.contains("open youtube") -> openApp("com.google.android.youtube", "YouTube")
             lower.contains("open chrome") -> openApp("com.android.chrome", "Chrome")
@@ -194,7 +180,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 val destination = command.substringAfter("to ", command)
                 launch(Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=" + Uri.encode(destination))), "Maps")
             }
-            lower == "hello" || lower.contains("hello jarvis") || lower.contains("ਸਤ ਸ੍ਰੀ ਅਕਾਲ") -> speak("ਸਤ ਸ੍ਰੀ ਅਕਾਲ ਸਰ। ਮੈਂ ਤੁਹਾਡੀ ਮਦਦ ਲਈ ਤਿਆਰ ਹਾਂ।")
+            lower == "hello" || lower.contains("hello jarvis") || lower.contains("ਸਤ ਸ੍ਰੀ ਅਕਾਲ") -> addReply("Good day, Sir. JARVIS is ready to assist.")
             else -> askSarvam(command)
         }
     }
@@ -217,7 +203,12 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         Thread {
             try {
                 val messages = JSONArray()
-                messages.put(JSONObject().put("role", "system").put("content", "You are JARVIS, a helpful hybrid voice assistant. Always answer in Punjabi (Gurmukhi script), concise and natural, and address the user respectfully as Sir (ਸਰ). You are also a patient student study tutor: explain school subjects in simple steps, solve problems with working, create short notes, flashcards, practice questions, quizzes, and revision plans. Ask the student for class/grade and subject only when needed. You are also a Free Fire India gameplay guide: give practical, fair-play advice on sensitivity, HUD and controls, aim practice, weapons, characters, maps, rotations, survival, and rank push; tailor advice to device and play style when known. Do not claim to know live game updates, current events, or exact current meta unless verified; say when information may change. Never recommend cheats, hacks, config abuse, or account theft. Do not tell the user to search Google unless they explicitly ask for a web search."))
+                val replyLanguage = when {
+                    question.any { it in '\u0A00'..'\u0A7F' } -> "Punjabi (Gurmukhi)"
+                    question.any { it in '\u0900'..'\u097F' } -> "Hindi (Devanagari)"
+                    else -> "English"
+                }
+                messages.put(JSONObject().put("role", "system").put("content", "You are JARVIS, a helpful hybrid personal assistant. Reply in the same language the user uses; English is the default when unclear. Address the user respectfully as Sir. Keep answers concise unless detail is requested. You are a patient study tutor: explain school subjects step by step, solve problems with working, create notes, flashcards, quizzes and revision plans. You are a Free Fire India guide: advise on fair-play sensitivity, HUD, aim practice, weapons, characters, maps, rotations, survival and rank push. Never recommend cheats, hacks, config abuse or account theft. Do not claim live updates or current meta without verification. Do not redirect users to Google unless they explicitly ask. Detected language: " + replyLanguage + "."))
                 synchronized(chatHistory) { chatHistory.takeLast(6).forEach { messages.put(it) }; messages.put(JSONObject().put("role", "user").put("content", question)) }
                 val payload = JSONObject().put("model", "sarvam-105b-conversations").put("messages", messages).put("max_tokens", 350).put("temperature", 0.3)
                 val conn = (URL("https://api.sarvam.ai/v1/chat/completions").openConnection() as HttpURLConnection).apply {
@@ -231,8 +222,8 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 val answer = JSONObject(body).getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content").trim()
                 if (answer.isBlank()) throw IllegalStateException("Empty AI response")
                 synchronized(chatHistory) { chatHistory.add(JSONObject().put("role", "user").put("content", question)); chatHistory.add(JSONObject().put("role", "assistant").put("content", answer)); while (chatHistory.size > 24) chatHistory.removeAt(0) }
-                runOnUiThread { speak(answer) }
-            } catch (_: Exception) { runOnUiThread { speak(offlineFallback(question)) } }
+                runOnUiThread { addReply(answer) }
+            } catch (_: Exception) { runOnUiThread { addReply(offlineFallback(question)) } }
         }.start()
     }
 
@@ -240,16 +231,11 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private fun offlineFallback(question: String): String {
         val q = question.lowercase(Locale.ROOT)
         return when {
-            q.contains("who are you") || q.contains("ਤੇਰਾ ਨਾਮ") || q.contains("ਤੁਸੀਂ ਕੌਣ") ->
-                "ਮੈਂ ਜਾਰਵਿਸ ਹਾਂ, ਤੁਹਾਡਾ ਨਿੱਜੀ ਸਹਾਇਕ।"
-            q.contains("what can you do") || q.contains("ਕੀ ਕਰ ਸਕਦੇ") ->
-                "ਸਰ, ਮੈਂ ਸਮਾਂ ਅਤੇ ਤਾਰੀਖ ਦੱਸ ਸਕਦਾ ਹਾਂ, ਕੈਮਰਾ, ਸੈਟਿੰਗਾਂ ਅਤੇ ਕੁਝ ਐਪਾਂ ਖੋਲ੍ਹ ਸਕਦਾ ਹਾਂ। ਆਨਲਾਈਨ ਸਵਾਲਾਂ ਲਈ ਇੰਟਰਨੈੱਟ ਅਤੇ ਸਰਵਮ ਕੁੰਜੀ ਚਾਹੀਦੀ ਹੈ।"
-            q.contains("thank") || q.contains("ਧੰਨਵਾਦ") ->
-                "ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ ਸਰ।"
-            q.contains("hello") || q.contains("ਸਤ ਸ੍ਰੀ ਅਕਾਲ") ->
-                "ਸਤ ਸ੍ਰੀ ਅਕਾਲ ਸਰ। ਮੈਂ ਆਫਲਾਈਨ ਮੋਡ ਵਿੱਚ ਵੀ ਤਿਆਰ ਹਾਂ।"
-            else ->
-                "ਸਰ, ਇਸ ਸਵਾਲ ਦਾ ਪੂਰਾ ਜਵਾਬ ਦੇਣ ਲਈ ਇੰਟਰਨੈੱਟ ਅਤੇ ਸਰਵਮ AI ਦੀ ਲੋੜ ਹੈ। ਪਰ ਸਮਾਂ, ਤਾਰੀਖ ਅਤੇ ਫੋਨ ਦੇ ਕਮਾਂਡ ਆਫਲਾਈਨ ਵੀ ਕੰਮ ਕਰਦੇ ਹਨ।"
+            q.contains("who are you") -> "I am JARVIS, your personal AI assistant, Sir."
+            q.contains("what can you do") -> "I can handle basic phone commands offline, open supported apps, tell jokes, and help with study and Free Fire. Online AI answers need a working Sarvam connection."
+            q.contains("thank") -> "You're welcome, Sir."
+            q.contains("hello") -> "Good day, Sir. I am ready."
+            else -> "I cannot reach Sarvam AI right now. Basic phone commands still work offline. Check your internet connection and API setup."
         }
     }
 
@@ -258,13 +244,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             startActivity(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
         } catch (_: Exception) {
             try { startActivity(Intent("android.media.action.IMAGE_CAPTURE")) }
-            catch (_: Exception) { speak("ਮਾਫ ਕਰਨਾ ਸਰ, ਕੈਮਰਾ ਨਹੀਂ ਖੁੱਲ੍ਹ ਸਕਿਆ।") }
+            catch (_: Exception) { addReply("Sorry, Sir. I could not open the camera.") }
         }
     }
 
     private fun openWebsite(rawTarget: String) {
         if (rawTarget.isBlank()) {
-            speak("ਸਰ, ਤੁਸੀਂ ਕਿਹੜੀ ਵੈੱਬਸਾਈਟ ਖੋਲ੍ਹਣੀ ਚਾਹੁੰਦੇ ਹੋ?")
+            addReply("Which website would you like me to open, Sir?")
             return
         }
         val target = rawTarget.trim()
@@ -289,7 +275,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             } catch (_: Exception) {
-                speak("ਮਾਫ ਕਰਨਾ ਸਰ, ਮੈਂ $label ਨਹੀਂ ਖੋਲ੍ਹ ਸਕਿਆ।")
+                addReply("Sorry, Sir. I could not open $label.")
             }
         }
     }
@@ -303,7 +289,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         if (match != null) {
             val launchIntent = packageManager.getLaunchIntentForPackage(match.first.packageName)
             if (launchIntent != null) {
-                try { startActivity(launchIntent); speak("ਜੀ ਸਰ, ${match.second} ਖੋਲ੍ਹ ਰਿਹਾ ਹਾਂ।"); return true }
+                try { startActivity(launchIntent); addReply("Opening ${match.second}, Sir."); return true }
                 catch (_: Exception) { }
             }
         }
@@ -316,30 +302,28 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             "ਸਰ, Wi-Fi ਉਦਾਸ ਕਿਉਂ ਸੀ? ਕਿਉਂਕਿ ਉਸਦਾ ਕੋਈ ਕਨੈਕਸ਼ਨ ਨਹੀਂ ਸੀ!",
             "ਸਰ, ਕਿਤਾਬ ਨੇ ਦੂਜੀ ਕਿਤਾਬ ਨੂੰ ਕੀ ਕਿਹਾ? ਤੂੰ ਬਹੁਤ ਕਵਰ ਕਰਦੀ ਏਂ!"
         )
-        speak(jokes.random())
+        addReply(jokes.random())
     }
 
     private fun openApp(packageName: String, label: String) {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        if (launchIntent != null) startActivity(launchIntent) else speak("ਸਰ, $label ਇਸ ਫੋਨ ਵਿੱਚ ਇੰਸਟਾਲ ਨਹੀਂ ਹੈ।")
+        if (launchIntent != null) startActivity(launchIntent) else addReply("$label is not installed on this phone, Sir.")
     }
 
     private fun launch(intent: Intent, label: String) {
         try { startActivity(intent) } catch (_: Exception) { speak("ਮਾਫ ਕਰਨਾ ਸਰ, ਮੈਂ $label ਨਹੀਂ ਖੋਲ੍ਹ ਸਕਿਆ।") }
     }
 
-    private fun speak(message: String) {
-        if (message.isNotBlank() && (chatLog.isEmpty() || !chatLog.last().equals("JARVIS: $message", true))) {
+    // Microphone input with on-screen replies only; no text-to-speech audio.
+    private fun addReply(message: String) {
+        if (message.isNotBlank()) {
             chatLog.add("JARVIS: $message")
             while (chatLog.size > 30) chatLog.removeAt(0)
         }
-        if (speechReady) tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "jarvis_reply")
     }
 
     override fun onDestroy() {
         recognizer?.destroy()
-        tts?.stop()
-        tts?.shutdown()
         super.onDestroy()
     }
 }
@@ -389,9 +373,9 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit, onAl
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("SAT SRI AKAL, SIR", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+                        Text("GOOD DAY, SIR.", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(5.dp))
-                        Text("ਮੈਂ ਤੁਹਾਡੀ ਮਦਦ ਲਈ ਤਿਆਰ ਹਾਂ।", color = cyan, fontSize = 14.sp)
+                        Text("Your personal AI assistant is ready.", color = cyan, fontSize = 13.sp)
                         Text(status, color = Color(0xFF9BB7C9), fontSize = 9.sp, letterSpacing = 1.sp)
                     }
                     Text("◈", color = cyan, fontSize = 38.sp)
@@ -406,7 +390,7 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit, onAl
                     } else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 })
                 Spacer(Modifier.height(8.dp))
-                Text("VOICE • PUNJABI • AI", color = Color(0xFF8DAFC4), fontSize = 10.sp, letterSpacing = 2.sp)
+                Text("MICROPHONE • ENGLISH DEFAULT • HINDI • PUNJABI", color = Color(0xFF8DAFC4), fontSize = 9.sp, letterSpacing = 1.sp)
                 Spacer(Modifier.height(22.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
