@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             JarvisScreen(
-                onListen = { startListening() },
+                onListen = { language -> startListening(language) },
                 onCommand = { command -> handleCommand(command) },
                 onAlwaysOn = { startAlwaysOnService() },
                 chatMessages = chatLog.toList()
@@ -130,15 +130,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun startListening() {
+    private fun startListening(language: String = "en-IN") {
         val speech = recognizer ?: run {
             addReply("Speech recognition is not available on this phone.")
             return
         }
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "en-IN")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
             putExtra(RecognizerIntent.EXTRA_PROMPT, "Listening, Sir")
         }
         speech.setRecognitionListener(object : RecognitionListener {
@@ -344,12 +344,13 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit, onAlwaysOn: () -> Unit, chatMessages: List<String>) {
+private fun JarvisScreen(onListen: (String) -> Unit, onCommand: (String) -> Unit, onAlwaysOn: () -> Unit, chatMessages: List<String>) {
     val navy = Color(0xFF030B16)
     val panel = Color(0xFF0A1B2C)
     val cyan = Color(0xFF35DFFF)
     var status by remember { mutableStateOf("SYSTEM ONLINE • READY") }
     var messageText by remember { mutableStateOf("") }
+    var voiceLanguage by remember { mutableStateOf("en-IN") }
     val context = LocalContext.current
     var startAlwaysOnAfterPermission by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -401,11 +402,23 @@ private fun JarvisScreen(onListen: () -> Unit, onCommand: (String) -> Unit, onAl
                 ArcReactorButton(onClick = {
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                         status = "LISTENING..."
-                        onListen()
+                        onListen(voiceLanguage)
                     } else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 })
                 Spacer(Modifier.height(8.dp))
-                Text("MICROPHONE • ENGLISH DEFAULT • HINDI • PUNJABI", color = Color(0xFF8DAFC4), fontSize = 9.sp, letterSpacing = 1.sp)
+                Text("VOICE INPUT LANGUAGE", color = Color(0xFF8DAFC4), fontSize = 9.sp, letterSpacing = 1.sp)
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("EN" to "en-IN", "HI" to "hi-IN", "PA" to "pa-IN").forEach { (label, locale) ->
+                        Button(
+                            onClick = { voiceLanguage = locale },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (voiceLanguage == locale) Color(0xFF087D9B) else Color(0xFF10283A)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) { Text(label, color = Color.White, fontSize = 11.sp) }
+                    }
+                }
                 Spacer(Modifier.height(22.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
