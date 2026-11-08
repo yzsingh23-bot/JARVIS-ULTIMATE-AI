@@ -103,10 +103,16 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleWakeIntent(intent: Intent?) {
-        if (intent?.action == WakeWordService.ACTION_WAKE_COMMAND) {
-            val command = intent.getStringExtra(WakeWordService.EXTRA_COMMAND)
-            if (!command.isNullOrBlank()) handleCommand(command)
-            intent.action = null
+        when (intent?.action) {
+            WakeWordService.ACTION_WAKE_COMMAND -> {
+                val command = intent.getStringExtra(WakeWordService.EXTRA_COMMAND)
+                if (!command.isNullOrBlank()) handleCommand(command)
+                intent.action = null
+            }
+            ACTION_WIDGET_TALK -> {
+                startListening()
+                intent.action = null
+            }
         }
     }
 
@@ -325,6 +331,10 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         recognizer?.destroy()
         super.onDestroy()
+    }
+
+    companion object {
+        const val ACTION_WIDGET_TALK = "com.jarvis.ultimate.WIDGET_TALK"
     }
 }
 
