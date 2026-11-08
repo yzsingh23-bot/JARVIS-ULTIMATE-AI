@@ -197,7 +197,7 @@ class MainActivity : ComponentActivity() {
                     else -> command.substringAfter("browse ").trim()
                 }
                 if (lower.startsWith("open ")) {
-                    if (!openInstalledApp(target)) addReply("ਸਰ, $target ਨਾਮ ਦੀ ਐਪ ਇਸ ਫੋਨ ਵਿੱਚ ਨਹੀਂ ਮਿਲੀ।")
+                    if (!openInstalledApp(target)) addReply("I could not find an installed app named $target, Sir.")
                 } else openWebsite(target)
             }
             lower.startsWith("navigate to ") || lower.startsWith("maps to ") -> {
@@ -220,7 +220,7 @@ class MainActivity : ComponentActivity() {
                     sarvamApiKey = input.text.toString().trim()
                     val saved = pendingQuestion; pendingQuestion = null
                     if (!sarvamApiKey.isNullOrBlank() && saved != null) askSarvam(saved)
-                    else addReply("ਕਿਰਪਾ ਕਰਕੇ ਵੈਧ ਸਰਵਮ API ਕੁੰਜੀ ਦਿਓ, ਸਰ।")
+                    else addReply("Please enter a valid Sarvam API key, Sir.")
                 }.setNegativeButton("Cancel", null).show()
             return
         }
@@ -322,9 +322,9 @@ class MainActivity : ComponentActivity() {
 
     private fun tellJoke() {
         val jokes = listOf(
-            "ਸਰ, ਕੰਪਿਊਟਰ ਡਾਕਟਰ ਕੋਲ ਕਿਉਂ ਗਿਆ? ਕਿਉਂਕਿ ਉਸਨੂੰ ਵਾਇਰਸ ਹੋ ਗਿਆ ਸੀ!",
-            "ਸਰ, Wi-Fi ਉਦਾਸ ਕਿਉਂ ਸੀ? ਕਿਉਂਕਿ ਉਸਦਾ ਕੋਈ ਕਨੈਕਸ਼ਨ ਨਹੀਂ ਸੀ!",
-            "ਸਰ, ਕਿਤਾਬ ਨੇ ਦੂਜੀ ਕਿਤਾਬ ਨੂੰ ਕੀ ਕਿਹਾ? ਤੂੰ ਬਹੁਤ ਕਵਰ ਕਰਦੀ ਏਂ!"
+            "Why did the computer visit the doctor? It caught a virus, Sir!",
+            "Why was the Wi-Fi feeling lonely? It had no connection, Sir!",
+            "Why did the student eat the homework? The teacher said it was a piece of cake, Sir!"
         )
         addReply(jokes.random())
     }
@@ -335,7 +335,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun launch(intent: Intent, label: String) {
-        try { startActivity(intent) } catch (_: Exception) { addReply("ਮਾਫ ਕਰਨਾ ਸਰ, ਮੈਂ $label ਨਹੀਂ ਖੋਲ੍ਹ ਸਕਿਆ।") }
+        try { startActivity(intent) } catch (_: Exception) { addReply("Sorry, Sir. I could not open $label.") }
     }
 
     // Microphone input with on-screen replies only; no text-to-speech audio.
