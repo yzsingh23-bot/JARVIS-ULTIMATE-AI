@@ -115,9 +115,22 @@ class MainActivity : ComponentActivity() {
                 intent.action = null
             }
             ACTION_WIDGET_TALK -> {
-                startListening()
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    startListening()
+                } else {
+                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7302)
+                }
                 intent.action = null
             }
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 7302 && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            startListening("en-IN")
+        } else if (requestCode == 7302) {
+            addReply("Microphone permission is needed to talk to JARVIS, Sir.")
         }
     }
 
