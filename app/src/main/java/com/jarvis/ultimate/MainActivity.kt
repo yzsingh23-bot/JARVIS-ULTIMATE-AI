@@ -118,21 +118,12 @@ class MainActivity : ComponentActivity() {
             }
             ACTION_WIDGET_TALK -> {
                 if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                    startListening()
+                    startListening("en-IN")
                 } else {
-                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7302)
+                    addReply("Tap the Arc Reactor button once to grant microphone permission, then use the home-screen widget.")
                 }
                 intent.action = null
             }
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 7302 && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
-            startListening("en-IN")
-        } else if (requestCode == 7302) {
-            addReply("Microphone permission is needed to talk to JARVIS, Sir.")
         }
     }
 
