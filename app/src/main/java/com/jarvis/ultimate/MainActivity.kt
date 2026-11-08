@@ -173,7 +173,7 @@ class MainActivity : ComponentActivity() {
                     else -> command.substringAfter("browse ").trim()
                 }
                 if (lower.startsWith("open ")) {
-                    if (!openInstalledApp(target)) speak("ਸਰ, $target ਨਾਮ ਦੀ ਐਪ ਇਸ ਫੋਨ ਵਿੱਚ ਨਹੀਂ ਮਿਲੀ।")
+                    if (!openInstalledApp(target)) addReply("ਸਰ, $target ਨਾਮ ਦੀ ਐਪ ਇਸ ਫੋਨ ਵਿੱਚ ਨਹੀਂ ਮਿਲੀ।")
                 } else openWebsite(target)
             }
             lower.startsWith("navigate to ") || lower.startsWith("maps to ") -> {
@@ -196,7 +196,7 @@ class MainActivity : ComponentActivity() {
                     sarvamApiKey = input.text.toString().trim()
                     val saved = pendingQuestion; pendingQuestion = null
                     if (!sarvamApiKey.isNullOrBlank() && saved != null) askSarvam(saved)
-                    else speak("ਕਿਰਪਾ ਕਰਕੇ ਵੈਧ ਸਰਵਮ API ਕੁੰਜੀ ਦਿਓ, ਸਰ।")
+                    else addReply("ਕਿਰਪਾ ਕਰਕੇ ਵੈਧ ਸਰਵਮ API ਕੁੰਜੀ ਦਿਓ, ਸਰ।")
                 }.setNegativeButton("Cancel", null).show()
             return
         }
@@ -311,7 +311,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun launch(intent: Intent, label: String) {
-        try { startActivity(intent) } catch (_: Exception) { speak("ਮਾਫ ਕਰਨਾ ਸਰ, ਮੈਂ $label ਨਹੀਂ ਖੋਲ੍ਹ ਸਕਿਆ।") }
+        try { startActivity(intent) } catch (_: Exception) { addReply("ਮਾਫ ਕਰਨਾ ਸਰ, ਮੈਂ $label ਨਹੀਂ ਖੋਲ੍ਹ ਸਕਿਆ।") }
     }
 
     // Microphone input with on-screen replies only; no text-to-speech audio.
