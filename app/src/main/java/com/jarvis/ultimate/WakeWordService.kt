@@ -79,8 +79,8 @@ class WakeWordService : Service() {
         if (!SpeechRecognizer.isRecognitionAvailable(this)) return
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(EXTRA_LANGUAGE_MODEL, LANGUAGE_MODEL_FREE_FORM)
-            putExtra(EXTRA_LANGUAGE, "pa-IN")
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pa-IN")
+            putExtra(EXTRA_LANGUAGE, "en-IN")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "en-IN")
             putExtra(EXTRA_PREFER_OFFLINE, true)
             putExtra(EXTRA_PARTIAL_RESULTS, true)
             putExtra(EXTRA_MAX_RESULTS, 3)
@@ -138,24 +138,13 @@ class WakeWordService : Service() {
                 dispatchCommand(command)
             } else {
                 awaitingCommand = true
-                // A brief voice acknowledgement; recognition resumes after it.
-                try {
-                    val tts = android.speech.tts.TextToSpeech(this) { status ->
-                        if (status == android.speech.tts.TextToSpeech.SUCCESS) {
-                            ttsRef?.language = Locale("pa", "IN")
-                            ttsRef?.speak("ਹਾਂ ਜੀ ਸਰ, ਦੱਸੋ।", android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "wake_ack")
-                        }
-                    }
-                    ttsRef = tts
-                } catch (_: Exception) { }
+                // No spoken acknowledgement: the microphone stays silent until a command is heard.
             }
         } else if (awaitingCommand) {
             awaitingCommand = false
             dispatchCommand(heard)
         }
     }
-
-    private var ttsRef: android.speech.tts.TextToSpeech? = null
 
     private fun containsWakePhrase(text: String): Boolean {
         val value = text.lowercase(Locale.ROOT)
@@ -218,8 +207,6 @@ class WakeWordService : Service() {
         handler.removeCallbacksAndMessages(null)
         try { recognizer?.cancel(); recognizer?.destroy() } catch (_: Exception) {}
         recognizer = null
-        try { ttsRef?.stop(); ttsRef?.shutdown() } catch (_: Exception) {}
-        ttsRef = null
         super.onDestroy()
     }
 
