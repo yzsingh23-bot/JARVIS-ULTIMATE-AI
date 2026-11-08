@@ -11,6 +11,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import android.net.Uri
+import android.provider.AlarmClock
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -176,6 +177,7 @@ class MainActivity : ComponentActivity() {
         if (command.isNotBlank()) chatLog.add("You: $command")
         val lower = command.lowercase(Locale.getDefault())
         when {
+            lower.startsWith("remind me") || lower.startsWith("set reminder") -> setReminder(command)
             lower.contains("joke") || lower.contains("ਚੁਟਕਲਾ") || lower.contains("ਮਜ਼ਾਕ") -> tellJoke()
             lower.contains("time") || lower.contains("ਸਮਾਂ") -> addReply("The time is " + SimpleDateFormat("h:mm a", Locale("en", "IN")).format(Date()))
             lower.contains("date") || lower.contains("day") || lower.contains("ਤਾਰੀਖ") -> addReply("Today is " + SimpleDateFormat("EEEE, d MMMM yyyy", Locale("en", "IN")).format(Date()))
@@ -206,6 +208,51 @@ class MainActivity : ComponentActivity() {
             }
             lower == "hello" || lower.contains("hello jarvis") || lower.contains("ਸਤ ਸ੍ਰੀ ਅਕਾਲ") -> addReply("Good day, Sir. JARVIS is ready to assist.")
             else -> askSarvam(command)
+        }
+    }
+
+    private fun setReminder(command: String) {
+        val title = command
+            .replace(Regex("(?i)^remind me( to)?"), "")
+            .replace(Regex("(?i)^set reminder( for)?"), "")
+            .replace(Regex("(?i)\\s+in\\s+\\d+\\s+(minutes?|hours?)"), "")
+            .replace(Regex("(?i)\\s+at\\s+\\d{1,2}(:\\d{2})?\\s*(am|pm)?"), "")
+            .trim()
+            .ifBlank { "JARVIS reminder" }
+        val relative = Regex("(?i)\\bin\\s+(\\d+)\\s+(minutes?|hours?)").find(command)
+        val absolute = Regex("(?i)\\bat\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?").find(command)
+        val time = when {
+            relative != null -> {
+                val amount = relative.groupValues[1].toLong()
+                if (relative.groupValues[2].startsWith("hour", true)) java.time.LocalTime.now().plusHours(amount)
+                else java.time.LocalTime.now().plusMinutes(amount)
+            }
+            absolute != null -> {
+                var hour = absolute.groupValues[1].toInt().coerceIn(0, 23)
+                val minute = absolute.groupValues[2].ifBlank { "0" }.toInt().coerceIn(0, 59)
+                val meridiem = absolute.groupValues[3]
+                if (meridiem.equals("pm", true) && hour in 1..11) hour += 12
+                if (meridiem.equals("am", true) && hour == 12) hour = 0
+                java.time.LocalTime.of(hour, minute)
+            }
+            else -> null
+        }
+        if (time == null) {
+            addReply("To set a reminder, say: remind me to study in 10 minutes, or remind me to call home at 7:30 PM.")
+            return
+        }
+        val alarm = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+            putExtra(AlarmClock.EXTRA_HOUR, time.hour)
+            putExtra(AlarmClock.EXTRA_MINUTES, time.minute)
+            putExtra(AlarmClock.EXTRA_MESSAGE, title)
+            putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+        }
+        try {
+            startActivity(alarm)
+            addReply("I opened the Clock app to confirm your reminder: $title at " +
+                time.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)) + ".")
+        } catch (_: Exception) {
+            addReply("The Clock app is not available, so I could not create that reminder.")
         }
     }
 
