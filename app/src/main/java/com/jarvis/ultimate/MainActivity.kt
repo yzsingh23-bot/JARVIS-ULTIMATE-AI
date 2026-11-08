@@ -91,6 +91,7 @@ class MainActivity : ComponentActivity() {
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
             recognizer = SpeechRecognizer.createSpeechRecognizer(this)
         }
+        loadChatLog()
         setContent {
             JarvisScreen(
                 onListen = { language -> startListening(language) },
@@ -174,7 +175,10 @@ class MainActivity : ComponentActivity() {
 
     private fun handleCommand(raw: String) {
         val command = raw.trim()
-        if (command.isNotBlank()) chatLog.add("You: $command")
+        if (command.isNotBlank()) {
+            chatLog.add("You: $command")
+            persistChatLog()
+        }
         val lower = command.lowercase(Locale.getDefault())
         when {
             lower.startsWith("remind me") || lower.startsWith("set reminder") -> setReminder(command)
@@ -378,7 +382,10 @@ class MainActivity : ComponentActivity() {
 
     private fun openApp(packageName: String, label: String) {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        if (launchIntent != null) startActivity(launchIntent) else addReply("$label is not installed on this phone, Sir.")
+        if (launchIntent != null) {
+            startActivity(launchIntent)
+            addReply("Opening $label, Sir.")
+        } else addReply("$label is not installed on this phone, Sir.")
     }
 
     private fun launch(intent: Intent, label: String) {
@@ -390,7 +397,22 @@ class MainActivity : ComponentActivity() {
         if (message.isNotBlank()) {
             chatLog.add("JARVIS: $message")
             while (chatLog.size > 30) chatLog.removeAt(0)
+            persistChatLog()
         }
+    }
+
+    private fun loadChatLog() {
+        val raw = getSharedPreferences("jarvis_chat", MODE_PRIVATE).getString("messages", null) ?: return
+        try {
+            val saved = JSONArray(raw)
+            for (i in 0 until saved.length()) chatLog.add(saved.getString(i))
+        } catch (_: Exception) { chatLog.clear() }
+    }
+
+    private fun persistChatLog() {
+        val saved = JSONArray()
+        chatLog.takeLast(30).forEach { saved.put(it) }
+        getSharedPreferences("jarvis_chat", MODE_PRIVATE).edit().putString("messages", saved.toString()).apply()
     }
 
     override fun onDestroy() {
